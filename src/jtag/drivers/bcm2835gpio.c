@@ -91,8 +91,13 @@ static int speed_coeff = 113714;
 static int speed_offset = 28;
 static unsigned int jtag_delay;
 
+static uint32_t lev = 0;
+
 static int bcm2835gpio_read(void)
 {
+        // the first read back is unreliable, so do a dummy ready before returning data
+        lev = GPIO_LEV;
+  
 	return !!(GPIO_LEV & 1<<tdo_gpio);
 }
 
@@ -101,6 +106,7 @@ static void bcm2835gpio_write(int tck, int tms, int tdi)
 	uint32_t set = tck<<tck_gpio | tms<<tms_gpio | tdi<<tdi_gpio;
 	uint32_t clear = !tck<<tck_gpio | !tms<<tms_gpio | !tdi<<tdi_gpio;
 
+	lev = GPIO_LEV;
 	GPIO_SET = set;
 	GPIO_CLR = clear;
 
@@ -113,6 +119,7 @@ static void bcm2835gpio_swd_write(int tck, int tms, int tdi)
 	uint32_t set = tck<<swclk_gpio | tdi<<swdio_gpio;
 	uint32_t clear = !tck<<swclk_gpio | !tdi<<swdio_gpio;
 
+	lev = GPIO_LEV;
 	GPIO_SET = set;
 	GPIO_CLR = clear;
 
@@ -136,6 +143,7 @@ static void bcm2835gpio_reset(int trst, int srst)
 		clear |= srst<<srst_gpio;
 	}
 
+	lev = GPIO_LEV;
 	GPIO_SET = set;
 	GPIO_CLR = clear;
 }
@@ -469,7 +477,7 @@ static int bcm2835gpio_init(void)
 	}
 
 	/* set 4mA drive strength, slew rate limited, hysteresis on */
-	pads_base[BCM2835_PADS_GPIO_0_27_OFFSET] = 0x5a000008 + 4; // 10 mA drive
+	pads_base[BCM2835_PADS_GPIO_0_27_OFFSET] = 0x5a000008 + 4;
 
 	tdo_gpio_mode = MODE_GPIO(tdo_gpio);
 	tdi_gpio_mode = MODE_GPIO(tdi_gpio);
@@ -483,8 +491,11 @@ static int bcm2835gpio_init(void)
 	 */
 	INP_GPIO(tdo_gpio);
 
-	GPIO_CLR = 1<<tdi_gpio | 1<<tck_gpio | 1<<swdio_gpio | 1<<swclk_gpio;
-	GPIO_SET = 1<<tms_gpio;
+	uint32_t clear = 1<<tdi_gpio | 1<<tck_gpio | 1<<swdio_gpio | 1<<swclk_gpio;
+	uint32_t set = 1<<tms_gpio;
+	lev = GPIO_LEV;
+	GPIO_CLR = clear;
+	GPIO_SET = set;
 
 	OUT_GPIO(tdi_gpio);
 	OUT_GPIO(tck_gpio);
@@ -493,12 +504,16 @@ static int bcm2835gpio_init(void)
 	OUT_GPIO(swdio_gpio);
 	if (trst_gpio != -1) {
 		trst_gpio_mode = MODE_GPIO(trst_gpio);
-		GPIO_SET = 1 << trst_gpio;
+		set = 1 << trst_gpio;
+		lev = GPIO_LEV;
+		GPIO_SET = set;
 		OUT_GPIO(trst_gpio);
 	}
 	if (srst_gpio != -1) {
 		srst_gpio_mode = MODE_GPIO(srst_gpio);
-		GPIO_SET = 1 << srst_gpio;
+		set = 1 << srst_gpio;
+		lev = GPIO_LEV;
+		GPIO_SET = 1 << set;
 		OUT_GPIO(srst_gpio);
 	}
 

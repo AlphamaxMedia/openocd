@@ -96,7 +96,10 @@ static uint32_t lev = 0;
 static int bcm2835gpio_read(void)
 {
         // the first read back is unreliable, so do a dummy ready before returning data
-        lev = GPIO_LEV;
+        // lev = GPIO_LEV;
+        GPIO_SET = 0;
+        GPIO_SET = 0;
+        GPIO_SET = 0;
   
 	return !!(GPIO_LEV & 1<<tdo_gpio);
 }
@@ -106,7 +109,8 @@ static void bcm2835gpio_write(int tck, int tms, int tdi)
 	uint32_t set = tck<<tck_gpio | tms<<tms_gpio | tdi<<tdi_gpio;
 	uint32_t clear = !tck<<tck_gpio | !tms<<tms_gpio | !tdi<<tdi_gpio;
 
-	lev = GPIO_LEV;
+        GPIO_SET = 0;
+	// lev = GPIO_LEV;
 	GPIO_SET = set;
 	GPIO_CLR = clear;
 
